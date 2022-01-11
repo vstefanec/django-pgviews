@@ -19,14 +19,14 @@ class ViewConfig(apps.AppConfig):
         """
         self.counter = self.counter + 1
         total = len([a for a in apps.apps.get_app_configs() if a.models_module is not None])
-        
+
         if self.counter == total:
             log.info('All applications have migrated, time to sync')
             # Import here otherwise Django doesn't start properly
             # (models in app init are not allowed)
             from .models import ViewSyncer
             vs = ViewSyncer()
-            vs.run(force=True, update=True) 
+            vs.run(force=True, update=True, using=kwargs['using'])
 
     def ready(self):
         """Find and setup the apps to set the post_migrate hooks for.

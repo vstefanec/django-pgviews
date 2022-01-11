@@ -1,7 +1,7 @@
 import logging
 
 from django.apps import apps
-from django.db import connection
+from django.db import connections
 
 from django_pgviews.view import create_view, View, MaterializedView
 from django_pgviews.signals import view_synced, all_views_synced
@@ -10,7 +10,7 @@ log = logging.getLogger('django_pgviews.sync_pgviews')
 
 
 class ViewSyncer(object):
-    def run(self, force, update, **options):
+    def run(self, force, update, using, **options):
         self.synced = []
         backlog = []
         for view_cls in apps.get_models():
@@ -22,14 +22,14 @@ class ViewSyncer(object):
         loop = 0
         while len(backlog) > 0 and loop < 10:
             loop += 1
-            backlog = self.run_backlog(backlog, force, update)
+            backlog = self.run_backlog(backlog, force, update, using)
 
         if loop >= 10:
             log.warn('pgviews dependencies hit limit. Check if your model dependencies are correct')
         else:
-            all_views_synced.send(sender=None)
+            all_views_synced.send(sender=None, using=using)
 
-    def run_backlog(self, models, force, update):
+    def run_backlog(self, models, force, update, using):
         '''Installs the list of models given from the previous backlog
 
         If the correct dependent views have not been installed, the view
@@ -50,6 +50,7 @@ class ViewSyncer(object):
                 continue # Skip
 
             try:
+                connection = connections[using]
                 status = create_view(connection, view_cls._meta.db_table,
                         view_cls.sql, update=update, force=force,
                         materialized=isinstance(view_cls(), MaterializedView),

@@ -7,7 +7,7 @@ import re
 
 import django
 from django.core import exceptions
-from django.db import connection, transaction
+from django.db import connections, transaction, DEFAULT_DB_ALIAS
 from django.db.models.query import QuerySet
 from django.db import models
 import six
@@ -266,8 +266,8 @@ class MaterializedView(View):
     http://www.postgresql.org/docs/current/static/sql-creatematerializedview.html
     """
     @classmethod
-    def refresh(self, concurrently=False):
-        cursor_wrapper = connection.cursor()
+    def refresh(self, concurrently=False, using=DEFAULT_DB_ALIAS):
+        cursor_wrapper = connections[using].cursor()
         cursor = cursor_wrapper.cursor
         try:
             if self._concurrent_index is not None and concurrently:
